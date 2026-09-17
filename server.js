@@ -1,8 +1,9 @@
 const http = require("node:http");
+const checkWebsite = require("./checkWebsite");
 
 const PORT = 4000;
 
-const server = http.createServer((request, response) => {
+const server = http.createServer(async (request, response) => {
   response.setHeader("Content-Type", "application/json");
 
   if (request.method === "GET" && request.url === "/health") {
@@ -13,6 +14,14 @@ const server = http.createServer((request, response) => {
         status: "ok",
       })
     );
+    return;
+  }
+
+  if (request.method === "GET" && request.url === "/check") {
+    const result = await checkWebsite();
+
+    response.writeHead(200);
+    response.end(JSON.stringify(result));
     return;
   }
 
