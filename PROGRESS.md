@@ -20,3 +20,8 @@
 
 ## Next task
 Add automated tests for URL validation.
+## URL-validation tests
+- Added automated acceptance and rejection tests.
+- Verified: npm test reports 11 passed, 0 failed.
+- Learned assert.equal, assert.throws, and regression testing.
+- Next: test website-checking behavior without relying on live websites.

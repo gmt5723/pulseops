@@ -8,3 +8,4 @@
 
 Response times observed during development are individual samples,
 not performance benchmarks. No production or scalability claims yet.
+- Added 11 passing automated URL-validation tests using Node's built-in test runner.
