@@ -68,6 +68,26 @@
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
+    label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #71809a;
+  border-radius: 8px;
+  background: #101827;
+  color: #eef2ff;
+  font: inherit;
+}
+
+input:focus-visible {
+  outline: 2px solid #a3e635;
+  outline-offset: 2px;
+}
   </style>
 </head>
 
@@ -78,8 +98,19 @@
 
     <section class="card" aria-labelledby="monitor-title">
       <h2 id="monitor-title">Website monitor</h2>
-      <p>Target: https://example.com</p>
+      <label for="website-url">Website URL</label>
 
+<input
+  id="website-url"
+  type="url"
+  value="https://example.com"
+  placeholder="https://example.org"
+  aria-describedby="url-help"
+/>
+
+<p id="url-help">
+  Currently supports https://example.com and https://example.org.
+</p>
       <button id="check-button" type="button">
         Check website
       </button>
@@ -91,44 +122,64 @@
   </main>
 
   <script>
-    const button = document.querySelector("#check-button");
-    const result = document.querySelector("#result");
+  const button = document.querySelector("#check-button");
+  const result = document.querySelector("#result");
+  const urlInput = document.querySelector("#website-url");
 
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      button.textContent = "Checking…";
-      result.textContent = "Waiting for the check result…";
+  button.addEventListener("click", async () => {
+    const url = urlInput.value.trim();
 
-      try {
-        const response = await fetch("/check", {
-          cache: "no-store",
-          signal: AbortSignal.timeout(10000),
-        });
+    if (!url) {
+      result.textContent = "Enter a website URL.";
+      urlInput.focus();
+      return;
+    }
 
-        if (!response.ok) {
-          throw new Error(`PulseOps API returned HTTP ${response.status}`);
-        }
+    if (!urlInput.reportValidity()) {
+      return;
+    }
 
-        const data = await response.json();
+    button.disabled = true;
+    urlInput.disabled = true;
+    button.textContent = "Checking…";
+    result.textContent = "Waiting for the check result…";
 
-        result.textContent = [
-          `Status: ${data.status}`,
-          `HTTP status: ${data.httpStatus ?? "No response"}`,
-          `Response time: ${
-            data.responseTimeMs === null
-              ? "Not available"
-              : `${data.responseTimeMs} ms`
-          }`,
-          `Error: ${data.error ?? "None"}`,
-        ].join("\n");
-      } catch (error) {
-        result.textContent =
-          `Could not complete the check. ${error.message}`;
-      } finally {
-        button.disabled = false;
-        button.textContent = "Check website";
+    try {
+      const params = new URLSearchParams({ url });
+
+      const response = await fetch(`/check?${params}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ?? `PulseOps API returned HTTP ${response.status}`
+        );
       }
-    });
-  </script>
+
+      result.textContent = [
+        `URL: ${data.url}`,
+        `Status: ${data.status}`,
+        `HTTP status: ${data.httpStatus ?? "No response"}`,
+        `Response time: ${
+          data.responseTimeMs === null
+            ? "Not available"
+            : `${data.responseTimeMs} ms`
+        }`,
+        `Error: ${data.error ?? "None"}`,
+      ].join("\n");
+    } catch (error) {
+      result.textContent =
+        `Could not complete the check. ${error.message}`;
+    } finally {
+      button.disabled = false;
+      urlInput.disabled = false;
+      button.textContent = "Check website";
+    }
+  });
+</script>
 </body>
 </html>
