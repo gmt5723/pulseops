@@ -1,9 +1,26 @@
 const http = require("node:http");
 const checkWebsite = require("./checkWebsite");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const PORT = 4000;
 
+const homePage = fs.readFileSync(
+  path.join(__dirname, "index.html"),
+  "utf8"
+);
+
 const server = http.createServer(async (request, response) => {
+  // Serve the browser interface.
+  if (request.method === "GET" && request.url === "/") {
+    response.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+    });
+    response.end(homePage);
+    return;
+  }
+
+  // The remaining routes return JSON.
   response.setHeader("Content-Type", "application/json");
 
   if (request.method === "GET" && request.url === "/health") {
@@ -18,10 +35,21 @@ const server = http.createServer(async (request, response) => {
   }
 
   if (request.method === "GET" && request.url === "/check") {
-    const result = await checkWebsite();
+    try {
+      const result = await checkWebsite();
 
-    response.writeHead(200);
-    response.end(JSON.stringify(result));
+      response.writeHead(200);
+      response.end(JSON.stringify(result));
+    } catch (error) {
+      console.error("Unexpected check error:", error);
+
+      response.writeHead(500);
+      response.end(
+        JSON.stringify({
+          message: "An unexpected error occurred while checking.",
+        })
+      );
+    }
     return;
   }
 

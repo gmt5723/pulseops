@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseOps</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 64px 20px;
+      background: #101827;
+      color: #eef2ff;
+      font-family: system-ui, sans-serif;
+    }
+
+    main {
+      max-width: 600px;
+      margin: auto;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #b8c4d8;
+      line-height: 1.6;
+    }
+
+    .card {
+      margin-top: 28px;
+      padding: 24px;
+      background: #1b273b;
+      border: 1px solid #34435b;
+      border-radius: 16px;
+    }
+
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #a3e635;
+      color: #172109;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    button:focus-visible {
+      outline: 3px solid white;
+      outline-offset: 4px;
+    }
+
+    #result {
+      margin-top: 20px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>PulseOps</h1>
+    <p>Check a website and inspect its response.</p>
+
+    <section class="card" aria-labelledby="monitor-title">
+      <h2 id="monitor-title">Website monitor</h2>
+      <p>Target: https://example.com</p>
+
+      <button id="check-button" type="button">
+        Check website
+      </button>
+
+      <div id="result" role="status" aria-live="polite">
+        No checks yet.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const button = document.querySelector("#check-button");
+    const result = document.querySelector("#result");
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      button.textContent = "Checking…";
+      result.textContent = "Waiting for the check result…";
+
+      try {
+        const response = await fetch("/check", {
+          cache: "no-store",
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (!response.ok) {
+          throw new Error(`PulseOps API returned HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        result.textContent = [
+          `Status: ${data.status}`,
+          `HTTP status: ${data.httpStatus ?? "No response"}`,
+          `Response time: ${
+            data.responseTimeMs === null
+              ? "Not available"
+              : `${data.responseTimeMs} ms`
+          }`,
+          `Error: ${data.error ?? "None"}`,
+        ].join("\n");
+      } catch (error) {
+        result.textContent =
+          `Could not complete the check. ${error.message}`;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Check website";
+      }
+    });
+  </script>
+</body>
+</html>
