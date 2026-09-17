@@ -10,7 +10,9 @@ function validateUrl(input) {
   } catch {
     throw new Error("Enter a complete URL, including https://.");
   }
-
+  if (url.protocol !== "https:") {
+  throw new Error("Only HTTPS URLs are supported.");
+}
   if (url.username || url.password) {
     throw new Error("URLs must not contain usernames or passwords.");
   }

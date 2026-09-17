@@ -12,10 +12,19 @@ const homePage = fs.readFileSync(
 );
 
 const server = http.createServer(async (request, response) => {
-  const requestUrl = new URL(
-    request.url,
-    "http://localhost:4000"
+  let requestUrl;
+
+try {
+  requestUrl = new URL(request.url, "http://localhost:4000");
+} catch {
+  response.writeHead(400, {
+    "Content-Type": "application/json",
+  });
+  response.end(
+    JSON.stringify({ message: "Invalid request URL." })
   );
+  return;
+}
 
   if (request.method === "GET" && requestUrl.pathname === "/") {
     response.writeHead(200, {
