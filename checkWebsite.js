@@ -1,5 +1,4 @@
-async function checkWebsite() {
-  const url = "https://example.com";
+async function checkWebsite(url) {
   const startedAt = performance.now();
 
   try {
