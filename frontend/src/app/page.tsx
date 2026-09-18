@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import ResultCard from "@/components/ResultCard";
 import CheckHistory from "@/components/CheckHistory";
 import type { CheckResult, CheckHistoryItem } from "@/types/monitor";
+import MonitorManager from "@/components/MonitorManager";
 
 export default function Home() {
   const [url, setUrl] = useState("https://example.com");
@@ -131,7 +132,9 @@ export default function Home() {
           </div>
         </section>
 
-        <CheckHistory checks={history} />
+        <MonitorManager />
+
+<CheckHistory checks={history} />
 
         <p className="mt-4 text-sm text-slate-500">
           Manual checks · 5-second backend timeout · History resets on refresh

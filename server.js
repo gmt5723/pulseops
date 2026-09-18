@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const checkWebsite = require("./checkWebsite");
 const validateUrl = require("./validateUrl");
+const { createMonitor, listMonitors } = require("./monitorStore");
 
 const PORT = 4000;
 
@@ -11,22 +12,62 @@ const homePage = fs.readFileSync(
   "utf8"
 );
 
+function sendJson(response, statusCode, data) {
+  response.writeHead(statusCode, {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+  });
+  response.end(JSON.stringify(data));
+}
+
+function readJsonBody(request) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+
+    request.on("data", (chunk) => {
+      size += chunk.length;
+
+      if (size > 4096) {
+        reject(
+          Object.assign(new Error("Request body is too large."), {
+            statusCode: 413,
+          })
+        );
+        return;
+      }
+
+      chunks.push(chunk);
+    });
+
+    request.on("end", () => {
+      if (size > 4096) return;
+
+      try {
+        const text = Buffer.concat(chunks).toString("utf8");
+        resolve(JSON.parse(text));
+      } catch {
+        reject(new Error("Send a valid JSON request body."));
+      }
+    });
+
+    request.on("error", reject);
+  });
+}
+
 const server = http.createServer(async (request, response) => {
   let requestUrl;
 
-try {
-  requestUrl = new URL(request.url, "http://localhost:4000");
-} catch {
-  response.writeHead(400, {
-    "Content-Type": "application/json",
-  });
-  response.end(
-    JSON.stringify({ message: "Invalid request URL." })
-  );
-  return;
-}
+  try {
+    requestUrl = new URL(request.url, "http://localhost:4000");
+  } catch {
+    sendJson(response, 400, { message: "Invalid request URL." });
+    return;
+  }
 
-  if (request.method === "GET" && requestUrl.pathname === "/") {
+  const route = requestUrl.pathname;
+
+  if (request.method === "GET" && route === "/") {
     response.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
     });
@@ -34,67 +75,71 @@ try {
     return;
   }
 
-  response.setHeader("Content-Type", "application/json");
-  response.setHeader("Cache-Control", "no-store");
-
-  if (
-    request.method === "GET" &&
-    requestUrl.pathname === "/health"
-  ) {
-    response.writeHead(200);
-    response.end(
-      JSON.stringify({
-        service: "PulseOps API",
-        status: "ok",
-      })
-    );
+  if (request.method === "GET" && route === "/health") {
+    sendJson(response, 200, {
+      service: "PulseOps API",
+      status: "ok",
+    });
     return;
   }
 
-  if (
-    request.method === "GET" &&
-    requestUrl.pathname === "/check"
-  ) {
+  if (request.method === "GET" && route === "/monitors") {
+    sendJson(response, 200, { monitors: listMonitors() });
+    return;
+  }
+
+  if (request.method === "POST" && route === "/monitors") {
+    const contentType = request.headers["content-type"]
+      ?.split(";")[0]
+      .trim()
+      .toLowerCase();
+
+    if (contentType !== "application/json") {
+      sendJson(response, 415, {
+        message: "Use Content-Type: application/json.",
+      });
+      return;
+    }
+
+    try {
+      const input = await readJsonBody(request);
+      const monitor = createMonitor(input);
+
+      sendJson(response, 201, { monitor });
+    } catch (error) {
+      sendJson(response, error.statusCode ?? 400, {
+        message: error.message,
+      });
+    }
+    return;
+  }
+
+  if (request.method === "GET" && route === "/check") {
     const input =
-      requestUrl.searchParams.get("url") ??
-      "https://example.com";
+      requestUrl.searchParams.get("url") ?? "https://example.com";
 
     let validatedUrl;
 
     try {
       validatedUrl = validateUrl(input);
     } catch (error) {
-      response.writeHead(400);
-      response.end(
-        JSON.stringify({ message: error.message })
-      );
+      sendJson(response, 400, { message: error.message });
       return;
     }
 
     try {
       const result = await checkWebsite(validatedUrl);
-
-      response.writeHead(200);
-      response.end(JSON.stringify(result));
+      sendJson(response, 200, result);
     } catch (error) {
       console.error("Unexpected check error:", error);
-
-      response.writeHead(500);
-      response.end(
-        JSON.stringify({
-          message: "An unexpected error occurred while checking.",
-        })
-      );
+      sendJson(response, 500, {
+        message: "An unexpected error occurred while checking.",
+      });
     }
     return;
   }
 
-  response.writeHead(404);
-  response.end(
-    JSON.stringify({
-      message: "Route not found",
-    })
-  );
+  sendJson(response, 404, { message: "Route not found" });
 });
 
 server.listen(PORT, "127.0.0.1", () => {
