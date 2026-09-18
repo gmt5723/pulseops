@@ -2,13 +2,15 @@
 
 import { useState, type FormEvent } from "react";
 import ResultCard from "@/components/ResultCard";
-import type { CheckResult } from "@/types/monitor";
+import CheckHistory from "@/components/CheckHistory";
+import type { CheckResult, CheckHistoryItem } from "@/types/monitor";
 
 export default function Home() {
   const [url, setUrl] = useState("https://example.com");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<CheckHistoryItem[]>([]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,7 +45,19 @@ export default function Home() {
         throw new Error(data.message ?? "The check request failed.");
       }
 
-      setResult(data);
+      const completedCheck: CheckResult = data;
+
+      setResult(completedCheck);
+
+      const historyItem: CheckHistoryItem = {
+        ...completedCheck,
+        id: crypto.randomUUID(),
+        checkedAt: new Date().toISOString(),
+      };
+
+      setHistory((previous) =>
+        [historyItem, ...previous].slice(0, 20)
+      );
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Something went wrong."
@@ -117,8 +131,10 @@ export default function Home() {
           </div>
         </section>
 
+        <CheckHistory checks={history} />
+
         <p className="mt-4 text-sm text-slate-500">
-          Manual checks · 5-second backend timeout · History not stored
+          Manual checks · 5-second backend timeout · History resets on refresh
         </p>
       </div>
     </main>

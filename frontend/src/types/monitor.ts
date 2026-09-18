@@ -5,3 +5,8 @@ export type CheckResult = {
   responseTimeMs: number | null;
   error: string | null;
 };
+
+export type CheckHistoryItem = CheckResult & {
+  id: string;
+  checkedAt: string;
+};
