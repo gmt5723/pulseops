@@ -156,8 +156,8 @@ export default function MonitorManager() {
       <h2 className="text-xl font-semibold">Named monitors</h2>
 
       <p className="mt-2 text-sm text-slate-400">
-        Monitors remain after refresh and clear when the backend
-        restarts. Check results clear when you refresh.
+        Monitors are saved and remain after backend restarts.
+        Check results clear when you refresh.
       </p>
 
       <form onSubmit={handleCreate} className="mt-5 space-y-4">
