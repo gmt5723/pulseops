@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import ResultCard from "@/components/ResultCard";
+import type { CheckResult } from "@/types/monitor";
 
 type Monitor = {
   id: string;
   name: string;
   url: string;
   createdAt: string;
+};
+
+type MonitorCheck = {
+  loading: boolean;
+  result: CheckResult | null;
+  error: string;
 };
 
 async function readResponse(response: Response) {
@@ -29,6 +37,7 @@ export default function MonitorManager() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [checks, setChecks] = useState<Record<string, MonitorCheck>>({});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,7 +68,6 @@ export default function MonitorManager() {
     }
 
     void loadMonitors();
-
     return () => controller.abort();
   }, []);
 
@@ -98,13 +106,58 @@ export default function MonitorManager() {
     }
   }
 
+  async function handleCheck(monitor: Monitor) {
+    if (checks[monitor.id]?.loading) return;
+
+    setChecks((previous) => ({
+      ...previous,
+      [monitor.id]: {
+        loading: true,
+        result: null,
+        error: "",
+      },
+    }));
+
+    try {
+      const params = new URLSearchParams({ url: monitor.url });
+
+      const response = await fetch(`/api/check?${params}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const result: CheckResult = await readResponse(response);
+
+      setChecks((previous) => ({
+        ...previous,
+        [monitor.id]: {
+          loading: false,
+          result,
+          error: "",
+        },
+      }));
+    } catch (error) {
+      setChecks((previous) => ({
+        ...previous,
+        [monitor.id]: {
+          loading: false,
+          result: null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "The check could not be completed.",
+        },
+      }));
+    }
+  }
+
   return (
     <section className="mt-8 rounded-2xl border border-slate-700 bg-slate-900 p-6">
       <h2 className="text-xl font-semibold">Named monitors</h2>
 
       <p className="mt-2 text-sm text-slate-400">
-        Stored in backend memory. Refreshing keeps them; restarting
-        the backend clears them. Checks are still manual.
+        Monitors remain after refresh and clear when the backend
+        restarts. Check results clear when you refresh.
       </p>
 
       <form onSubmit={handleCreate} className="mt-5 space-y-4">
@@ -148,7 +201,7 @@ export default function MonitorManager() {
           disabled={saving || loading}
           className="rounded-lg bg-lime-400 px-5 py-3 font-bold text-slate-950 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime-400"
         >
-          {saving ? "Creating…" : "Create monitor"}
+          {saving ? "Creating..." : "Create monitor"}
         </button>
       </form>
 
@@ -163,19 +216,53 @@ export default function MonitorManager() {
       </p>
 
       {loading ? (
-        <p className="mt-4 text-slate-400">Loading monitors…</p>
+        <p className="mt-4 text-slate-400">Loading monitors...</p>
       ) : monitors.length === 0 ? (
         <p className="mt-4 text-slate-400">No monitors loaded.</p>
       ) : (
         <ul className="mt-5 divide-y divide-slate-700">
-          {monitors.map((monitor) => (
-            <li key={monitor.id} className="py-4">
-              <p className="font-semibold">{monitor.name}</p>
-              <p className="break-words text-sm text-slate-400">
-                {monitor.url}
-              </p>
-            </li>
-          ))}
+          {monitors.map((monitor) => {
+            const check = checks[monitor.id];
+
+            return (
+              <li key={monitor.id} className="space-y-4 py-5">
+                <div>
+                  <h3 className="font-semibold">{monitor.name}</h3>
+                  <p className="break-words text-sm text-slate-400">
+                    {monitor.url}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleCheck(monitor)}
+                  disabled={check?.loading ?? false}
+                  aria-label={`Check ${monitor.name} now`}
+                  className="rounded-lg bg-lime-400 px-4 py-2 font-bold text-slate-950 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime-400"
+                >
+                  {check?.loading ? "Checking..." : "Check now"}
+                </button>
+
+                <div role="status" aria-live="polite">
+                  {check?.loading && (
+                    <p className="text-sm text-slate-400">
+                      Waiting for the check result...
+                    </p>
+                  )}
+
+                  {check?.result && (
+                    <ResultCard result={check.result} />
+                  )}
+                </div>
+
+                {check?.error && (
+                  <p role="alert" className="text-red-300">
+                    {check.error}
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
