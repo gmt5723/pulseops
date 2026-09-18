@@ -1,14 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-
-type CheckResult = {
-  url: string;
-  status: "ONLINE" | "FAILED";
-  httpStatus: number | null;
-  responseTimeMs: number | null;
-  error: string | null;
-};
+import ResultCard from "@/components/ResultCard";
+import type { CheckResult } from "@/types/monitor";
 
 export default function Home() {
   const [url, setUrl] = useState("https://example.com");
@@ -74,7 +68,10 @@ export default function Home() {
 
         <section className="mt-8 rounded-2xl border border-slate-700 bg-slate-900 p-6">
           <form onSubmit={handleSubmit}>
-            <label htmlFor="website-url" className="mb-2 block font-medium">
+            <label
+              htmlFor="website-url"
+              className="mb-2 block font-medium"
+            >
               Website URL
             </label>
 
@@ -108,8 +105,12 @@ export default function Home() {
           )}
 
           <div role="status" aria-live="polite" className="mt-6">
-            {loading && <p className="text-slate-400">Waiting for a response…</p>}
+            {loading && (
+              <p className="text-slate-400">Waiting for a response…</p>
+            )}
+
             {result && <ResultCard result={result} />}
+
             {!loading && !result && !error && (
               <p className="text-slate-400">No checks yet.</p>
             )}
@@ -121,28 +122,5 @@ export default function Home() {
         </p>
       </div>
     </main>
-  );
-}
-
-function ResultCard({ result }: { result: CheckResult }) {
-  return (
-    <div className="space-y-2 border-t border-slate-700 pt-5">
-      <p className="break-words text-slate-300">{result.url}</p>
-
-      <p className={result.status === "ONLINE" ? "text-lime-400" : "text-red-300"}>
-        Status: {result.status}
-      </p>
-
-      <p>HTTP status: {result.httpStatus ?? "No response"}</p>
-
-      <p>
-        Response time:{" "}
-        {result.responseTimeMs === null
-          ? "Not available"
-          : `${result.responseTimeMs} ms`}
-      </p>
-
-      <p>Error: {result.error ?? "None"}</p>
-    </div>
   );
 }
