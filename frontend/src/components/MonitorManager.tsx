@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import ResultCard from "@/components/ResultCard";
-import type { CheckResult } from "@/types/monitor";
+import type { CheckResult, CheckHistoryItem } from "@/types/monitor";
 import DeleteMonitorButton from "@/components/DeleteMonitorButton";
 import RenameMonitorForm from "@/components/RenameMonitorForm";
 
@@ -32,7 +32,7 @@ async function readResponse(response: Response) {
 }
 
 type MonitorManagerProps = {
-  onCheckComplete: (result: CheckResult) => void;
+  onCheckComplete: (result: CheckHistoryItem) => void;
 };
 
 export default function MonitorManager({
@@ -133,7 +133,7 @@ export default function MonitorManager({
         signal: AbortSignal.timeout(10000),
       });
 
-      const result: CheckResult = await readResponse(response);
+      const result: CheckHistoryItem = await readResponse(response);
 
       setChecks((previous) => ({
         ...previous,
