@@ -154,3 +154,70 @@ test("rejects corrupt storage without overwriting it", (t) => {
     corruptContents
   );
 });
+test("deletes a monitor permanently while preserving other monitors", (t) => {
+  const fixture = createFixture(t);
+
+  const created = fixture.run(`
+    const store = require("./monitorStore");
+
+    const first = store.createMonitor({
+      name: "Delete this",
+      url: "https://example.org"
+    });
+
+    const second = store.createMonitor({
+      name: "Keep this",
+      url: "https://example.com"
+    });
+
+    console.log(JSON.stringify({ first, second }));
+  `);
+
+  const outcome = fixture.run(`
+    const store = require("./monitorStore");
+    const deleted = store.deleteMonitor(
+      ${JSON.stringify(created.first.id)}
+    );
+
+    console.log(JSON.stringify({
+      deleted,
+      monitors: store.listMonitors()
+    }));
+  `);
+
+  assert.equal(outcome.deleted, true);
+  assert.deepEqual(outcome.monitors, [created.second]);
+
+  const reloaded = fixture.run(`
+    const store = require("./monitorStore");
+    console.log(JSON.stringify(store.listMonitors()));
+  `);
+
+  assert.deepEqual(reloaded, [created.second]);
+});
+
+test("deleting an unknown monitor leaves storage unchanged", (t) => {
+  const fixture = createFixture(t);
+
+  fixture.run(`
+    const store = require("./monitorStore");
+
+    console.log(JSON.stringify(store.createMonitor({
+      name: "Keep this",
+      url: "https://example.org"
+    })));
+  `);
+
+  const before = fs.readFileSync(fixture.storageFile, "utf8");
+
+  const deleted = fixture.run(`
+    const store = require("./monitorStore");
+    console.log(JSON.stringify(store.deleteMonitor("missing-id")));
+  `);
+
+  assert.equal(deleted, false);
+  assert.equal(
+    fs.readFileSync(fixture.storageFile, "utf8"),
+    before
+  );
+});

@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import ResultCard from "@/components/ResultCard";
 import type { CheckResult } from "@/types/monitor";
+import DeleteMonitorButton from "@/components/DeleteMonitorButton";
 
 type Monitor = {
   id: string;
@@ -242,7 +243,24 @@ export default function MonitorManager() {
                 >
                   {check?.loading ? "Checking..." : "Check now"}
                 </button>
+                <DeleteMonitorButton
+  monitorId={monitor.id}
+  monitorName={monitor.name}
+  disabled={check?.loading ?? false}
+  onDeleted={(id) => {
+    setMonitors((previous) =>
+      previous.filter((item) => item.id !== id)
+    );
 
+    setChecks((previous) => {
+      const updated = { ...previous };
+      delete updated[id];
+      return updated;
+    });
+
+    setNotice(`${monitor.name} deleted.`);
+  }}
+/>
                 <div role="status" aria-live="polite">
                   {check?.loading && (
                     <p className="text-sm text-slate-400">
