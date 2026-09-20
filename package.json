@@ -4,10 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test"
+    "dev": "concurrently --kill-others --names API,WEB \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "node server.js",
+    "dev:web": "npm --prefix frontend run dev",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
 }
