@@ -173,6 +173,10 @@ const server = http.createServer(async (request, response) => {
   sendJson(response, 404, { message: "Route not found" });
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`PulseOps API running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, "127.0.0.1", () => {
+    console.log(`PulseOps API running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = server;
