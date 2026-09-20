@@ -221,3 +221,36 @@ test("deleting an unknown monitor leaves storage unchanged", (t) => {
     before
   );
 });
+test("renamed monitors retain their new name after restart", (t) => {
+  const fixture = createFixture(t);
+
+  const original = fixture.run(`
+    const store = require("./monitorStore");
+
+    console.log(JSON.stringify(store.createMonitor({
+      name: "Original name",
+      url: "https://example.org"
+    })));
+  `);
+
+  const renamed = fixture.run(`
+    const store = require("./monitorStore");
+
+    console.log(JSON.stringify(store.renameMonitor(
+      ${JSON.stringify(original.id)},
+      { name: "Updated name" }
+    )));
+  `);
+
+  assert.deepEqual(renamed, {
+    ...original,
+    name: "Updated name",
+  });
+
+  const reloaded = fixture.run(`
+    const store = require("./monitorStore");
+    console.log(JSON.stringify(store.listMonitors()));
+  `);
+
+  assert.deepEqual(reloaded, [renamed]);
+});

@@ -226,3 +226,77 @@ test("API: unknown routes return HTTP 404", async (t) => {
     message: "Route not found",
   });
 });
+test("API: renames a monitor while preserving its other fields", async (t) => {
+  const request = await startApi(t);
+
+  const created = await request(
+    "/monitors",
+    jsonPost({
+      name: "Original name",
+      url: "https://example.org",
+    })
+  );
+
+  assert.equal(created.status, 201);
+  const original = created.body.monitor;
+
+  const renamed = await request(`/monitors/${original.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "  Updated name  " }),
+  });
+
+  assert.equal(renamed.status, 200);
+  assert.deepEqual(renamed.body.monitor, {
+    ...original,
+    name: "Updated name",
+  });
+
+  const listed = await request("/monitors");
+  assert.deepEqual(listed.body.monitors, [
+    { ...original, name: "Updated name" },
+  ]);
+});
+
+test("API: rejects invalid monitor names without changing the monitor", async (t) => {
+  const request = await startApi(t);
+
+  const created = await request(
+    "/monitors",
+    jsonPost({
+      name: "Keep this name",
+      url: "https://example.org",
+    })
+  );
+
+  assert.equal(created.status, 201);
+  const original = created.body.monitor;
+
+  for (const name of ["", "   ", "x".repeat(61), null, 123]) {
+    const result = await request(`/monitors/${original.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+
+    assert.equal(result.status, 400);
+  }
+
+  const listed = await request("/monitors");
+  assert.deepEqual(listed.body.monitors, [original]);
+});
+
+test("API: renaming an unknown monitor returns HTTP 404", async (t) => {
+  const request = await startApi(t);
+
+  const result = await request("/monitors/missing-id", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "New name" }),
+  });
+
+  assert.equal(result.status, 404);
+  assert.deepEqual(result.body, {
+    message: "Monitor not found.",
+  });
+});

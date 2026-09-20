@@ -6,6 +6,25 @@ const validateUrl = require("./validateUrl");
 const dataDirectory = path.join(__dirname, "data");
 const storageFile = path.join(dataDirectory, "monitors.json");
 
+function validateName(name) {
+  if (typeof name !== "string" || name.trim() === "") {
+    throw Object.assign(new Error("Enter a monitor name."), {
+      statusCode: 400,
+    });
+  }
+
+  const trimmedName = name.trim();
+
+  if (trimmedName.length > 60) {
+    throw Object.assign(
+      new Error("Monitor names must be 60 characters or fewer."),
+      { statusCode: 400 }
+    );
+  }
+
+  return trimmedName;
+}
+
 function loadMonitors() {
   let contents;
 
@@ -75,16 +94,7 @@ function saveMonitors(records) {
 }
 
 function createMonitor(input) {
-  const name = input?.name;
-
-  if (typeof name !== "string" || name.trim() === "") {
-    throw new Error("Enter a monitor name.");
-  }
-
-  if (name.trim().length > 60) {
-    throw new Error("Monitor names must be 60 characters or fewer.");
-  }
-
+  const name = validateName(input?.name);
   const url = validateUrl(input.url);
 
   for (const monitor of monitors.values()) {
@@ -95,7 +105,7 @@ function createMonitor(input) {
 
   const monitor = {
     id: randomUUID(),
-    name: name.trim(),
+    name,
     url,
     createdAt: new Date().toISOString(),
   };
@@ -111,6 +121,31 @@ function listMonitors() {
   return Array.from(monitors.values(), (monitor) => ({
     ...monitor,
   }));
+}
+
+function renameMonitor(id, input) {
+  const existing = monitors.get(id);
+
+  if (!existing) {
+    return null;
+  }
+
+  const name = validateName(input?.name);
+
+  const updated = {
+    ...existing,
+    name,
+  };
+
+  const records = Array.from(monitors.values(), (monitor) =>
+    monitor.id === id ? updated : monitor
+  );
+
+  // Preserve the existing record if saving fails.
+  saveMonitors(records);
+  monitors.set(id, updated);
+
+  return { ...updated };
 }
 
 function deleteMonitor(id) {
@@ -132,5 +167,6 @@ function deleteMonitor(id) {
 module.exports = {
   createMonitor,
   listMonitors,
+  renameMonitor,
   deleteMonitor,
 };

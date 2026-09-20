@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import ResultCard from "@/components/ResultCard";
 import type { CheckResult } from "@/types/monitor";
 import DeleteMonitorButton from "@/components/DeleteMonitorButton";
+import RenameMonitorForm from "@/components/RenameMonitorForm";
 
 type Monitor = {
   id: string;
@@ -243,6 +244,20 @@ export default function MonitorManager() {
                 >
                   {check?.loading ? "Checking..." : "Check now"}
                 </button>
+<RenameMonitorForm
+  monitorId={monitor.id}
+  monitorName={monitor.name}
+  disabled={check?.loading ?? false}
+  onRenamed={(id, newName) => {
+    setMonitors((previous) =>
+      previous.map((item) =>
+        item.id === id ? { ...item, name: newName } : item
+      )
+    );
+
+    setNotice(`Monitor renamed to ${newName}.`);
+  }}
+/>
                 <DeleteMonitorButton
   monitorId={monitor.id}
   monitorName={monitor.name}
