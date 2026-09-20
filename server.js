@@ -6,6 +6,7 @@ const validateUrl = require("./validateUrl");
 const {
   createMonitor,
   listMonitors,
+  renameMonitor,
   deleteMonitor,
 } = require("./monitorStore");
 
@@ -51,7 +52,11 @@ function readJsonBody(request) {
         const text = Buffer.concat(chunks).toString("utf8");
         resolve(JSON.parse(text));
       } catch {
-        reject(new Error("Send a valid JSON request body."));
+        reject(
+          Object.assign(new Error("Send a valid JSON request body."), {
+            statusCode: 400,
+          })
+        );
       }
     });
 
@@ -119,6 +124,48 @@ const server = http.createServer(async (request, response) => {
   }
 
   const monitorMatch = route.match(/^\/monitors\/([^/]+)$/);
+
+  if (request.method === "PATCH" && monitorMatch) {
+    const contentType = request.headers["content-type"]
+      ?.split(";")[0]
+      .trim()
+      .toLowerCase();
+
+    if (contentType !== "application/json") {
+      sendJson(response, 415, {
+        message: "Use Content-Type: application/json.",
+      });
+      return;
+    }
+
+    try {
+      const input = await readJsonBody(request);
+      const monitor = renameMonitor(monitorMatch[1], input);
+
+      if (!monitor) {
+        sendJson(response, 404, {
+          message: "Monitor not found.",
+        });
+        return;
+      }
+
+      sendJson(response, 200, { monitor });
+    } catch (error) {
+      if (error.statusCode === 400 || error.statusCode === 413) {
+        sendJson(response, error.statusCode, {
+          message: error.message,
+        });
+      } else {
+        console.error("Could not rename monitor:", error);
+
+        sendJson(response, 500, {
+          message: "Could not save the new name. Please try again.",
+        });
+      }
+    }
+
+    return;
+  }
 
   if (request.method === "DELETE" && monitorMatch) {
     const id = monitorMatch[1];
