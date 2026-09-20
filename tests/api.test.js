@@ -319,3 +319,108 @@ test("API: history starts empty and excludes rejected URLs", async (t) => {
   assert.equal(afterRejection.status, 200);
   assert.deepEqual(afterRejection.body, { checks: [] });
 });
+function mockWebsiteResponses(t, statuses) {
+  const originalFetch = globalThis.fetch;
+  const remaining = [...statuses];
+  let calls = 0;
+
+  t.mock.method(globalThis, "fetch", async (input, options) => {
+    const address =
+      input instanceof Request ? input.url : String(input);
+    const url = new URL(address);
+
+    // Keep real HTTP requests to the isolated test API.
+    if (url.protocol === "http:" && url.hostname === "127.0.0.1") {
+      return originalFetch(input, options);
+    }
+
+    // Simulate only the approved external websites.
+    if (
+      url.origin === "https://example.com" ||
+      url.origin === "https://example.org"
+    ) {
+      calls += 1;
+
+      const status = remaining.shift();
+
+      if (status === undefined) {
+        throw new Error("Unexpected extra website request.");
+      }
+
+      return new Response(null, { status });
+    }
+
+    throw new Error(`Unexpected destination in test: ${url.origin}`);
+  });
+
+  return {
+    get calls() {
+      return calls;
+    },
+  };
+}
+
+test("API: successful checks return saved IDs and appear in history", async (t) => {
+  const website = mockWebsiteResponses(t, [200]);
+  const request = await startApi(t);
+
+  const params = new URLSearchParams({
+    url: "https://example.org",
+  });
+
+  const checked = await request(`/check?${params}`);
+
+  assert.equal(checked.status, 200);
+  assert.equal(checked.body.url, "https://example.org/");
+  assert.equal(checked.body.status, "ONLINE");
+  assert.equal(checked.body.httpStatus, 200);
+  assert.equal(checked.body.error, null);
+  assert.equal(typeof checked.body.id, "string");
+  assert.ok(checked.body.id.length > 0);
+  assert.equal(typeof checked.body.checkedAt, "string");
+  assert.ok(!Number.isNaN(Date.parse(checked.body.checkedAt)));
+  assert.equal(typeof checked.body.responseTimeMs, "number");
+  assert.ok(checked.body.responseTimeMs >= 0);
+
+  const history = await request("/checks");
+
+  assert.equal(history.status, 200);
+  assert.deepEqual(history.body.checks, [checked.body]);
+
+  // Reading history must not trigger another website check.
+  const historyAgain = await request("/checks");
+
+  assert.deepEqual(historyAgain.body.checks, [checked.body]);
+  assert.equal(website.calls, 1);
+});
+
+test("API: failed target responses are saved newest first", async (t) => {
+  const website = mockWebsiteResponses(t, [200, 503]);
+  const request = await startApi(t);
+
+  const params = new URLSearchParams({
+    url: "https://example.org",
+  });
+
+  const first = await request(`/check?${params}`);
+  const second = await request(`/check?${params}`);
+
+  assert.equal(first.status, 200);
+  assert.equal(first.body.status, "ONLINE");
+
+  // The API completed the check even though the target returned 503.
+  assert.equal(second.status, 200);
+  assert.equal(second.body.status, "FAILED");
+  assert.equal(second.body.httpStatus, 503);
+  assert.equal(second.body.error, null);
+  assert.notEqual(first.body.id, second.body.id);
+
+  const history = await request("/checks");
+
+  assert.equal(history.status, 200);
+  assert.deepEqual(history.body.checks, [
+    second.body,
+    first.body,
+  ]);
+  assert.equal(website.calls, 2);
+});
