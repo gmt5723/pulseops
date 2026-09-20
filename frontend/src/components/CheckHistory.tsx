@@ -15,8 +15,8 @@ export default function CheckHistory({ checks }: CheckHistoryProps) {
       </h2>
 
       <p className="mt-2 text-sm text-slate-400">
-        Last 20 completed checks in this page session.
-        Refreshing clears this history.
+        Last 20 completed checks, newest first.
+History remains after page refreshes and backend restarts.
       </p>
 
       {checks.length === 0 ? (

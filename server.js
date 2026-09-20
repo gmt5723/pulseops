@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const checkWebsite = require("./checkWebsite");
 const validateUrl = require("./validateUrl");
+const { recordCheck, listChecks } = require("./checkHistoryStore");
 const {
   createMonitor,
   listMonitors,
@@ -91,7 +92,10 @@ const server = http.createServer(async (request, response) => {
     });
     return;
   }
-
+   if (request.method === "GET" && route === "/checks") {
+    sendJson(response, 200, { checks: listChecks() });
+    return;
+  }
   if (request.method === "GET" && route === "/monitors") {
     sendJson(response, 200, { monitors: listMonitors() });
     return;
@@ -206,8 +210,9 @@ const server = http.createServer(async (request, response) => {
     }
 
     try {
-      const result = await checkWebsite(validatedUrl);
-      sendJson(response, 200, result);
+           const result = await checkWebsite(validatedUrl);
+      const savedCheck = recordCheck(result);
+      sendJson(response, 200, savedCheck);
     } catch (error) {
       console.error("Unexpected check error:", error);
       sendJson(response, 500, {

@@ -27,9 +27,10 @@ async function startApi(t) {
     }
   });
 
-  for (const filename of [
+    for (const filename of [
     "server.js",
     "monitorStore.js",
+    "checkHistoryStore.js",
     "validateUrl.js",
     "checkWebsite.js",
     "index.html",
@@ -299,4 +300,22 @@ test("API: renaming an unknown monitor returns HTTP 404", async (t) => {
   assert.deepEqual(result.body, {
     message: "Monitor not found.",
   });
+});
+test("API: history starts empty and excludes rejected URLs", async (t) => {
+  const request = await startApi(t);
+
+  const initial = await request("/checks");
+  assert.equal(initial.status, 200);
+  assert.deepEqual(initial.body, { checks: [] });
+
+  const params = new URLSearchParams({
+    url: "https://unapproved.invalid",
+  });
+
+  const rejected = await request(`/check?${params}`);
+  assert.equal(rejected.status, 400);
+
+  const afterRejection = await request("/checks");
+  assert.equal(afterRejection.status, 200);
+  assert.deepEqual(afterRejection.body, { checks: [] });
 });

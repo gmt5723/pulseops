@@ -1,10 +1,28 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import ResultCard from "@/components/ResultCard";
 import CheckHistory from "@/components/CheckHistory";
 import type { CheckResult, CheckHistoryItem } from "@/types/monitor";
 import MonitorManager from "@/components/MonitorManager";
+
+function mergeHistory(
+  current: CheckHistoryItem[],
+  incoming: CheckHistoryItem[]
+): CheckHistoryItem[] {
+  const unique = new Map<string, CheckHistoryItem>();
+
+  for (const check of [...current, ...incoming]) {
+    unique.set(check.id, check);
+  }
+
+  return Array.from(unique.values())
+    .sort(
+      (a, b) =>
+        Date.parse(b.checkedAt) - Date.parse(a.checkedAt)
+    )
+    .slice(0, 20);
+}
 
 export default function Home() {
   const [url, setUrl] = useState("https://example.com");
@@ -12,16 +30,60 @@ export default function Home() {
   const [result, setResult] = useState<CheckResult | null>(null);
   const [error, setError] = useState("");
   const [history, setHistory] = useState<CheckHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
 
-  function recordCheck(completedCheck: CheckResult) {
-    const historyItem: CheckHistoryItem = {
-      ...completedCheck,
-      id: crypto.randomUUID(),
-      checkedAt: new Date().toISOString(),
-    };
+  useEffect(() => {
+    const controller = new AbortController();
 
+    async function loadHistory() {
+      try {
+        const response = await fetch("/api/checks", {
+          cache: "no-store",
+          signal: AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(10000),
+          ]),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message ?? "Could not load saved history.");
+        }
+
+        if (!Array.isArray(data.checks)) {
+          throw new Error("The API returned an invalid history response.");
+        }
+
+        if (!controller.signal.aborted) {
+          setHistory((previous) =>
+            mergeHistory(previous, data.checks)
+          );
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setHistoryError(
+            error instanceof Error
+              ? error.message
+              : "Could not load saved history."
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setHistoryLoading(false);
+        }
+      }
+    }
+
+    void loadHistory();
+
+    return () => controller.abort();
+  }, []);
+
+  function recordCheck(completedCheck: CheckHistoryItem) {
     setHistory((previous) =>
-      [historyItem, ...previous].slice(0, 20)
+      mergeHistory(previous, [completedCheck])
     );
   }
 
@@ -58,7 +120,7 @@ export default function Home() {
         throw new Error(data.message ?? "The check request failed.");
       }
 
-      const completedCheck: CheckResult = data;
+      const completedCheck: CheckHistoryItem = data;
 
       setResult(completedCheck);
       recordCheck(completedCheck);
@@ -137,10 +199,26 @@ export default function Home() {
 
         <MonitorManager onCheckComplete={recordCheck} />
 
-        <CheckHistory checks={history} />
+        {historyLoading && (
+          <p role="status" className="mt-6 text-slate-400">
+            Loading saved history...
+          </p>
+        )}
+
+        {historyError && (
+          <p role="alert" className="mt-6 text-red-300">
+            Could not load saved history: {historyError}
+            {" "}Refresh the page to retry.
+          </p>
+        )}
+
+        {history.length > 0 ||
+        (!historyLoading && !historyError) ? (
+          <CheckHistory checks={history} />
+        ) : null}
 
         <p className="mt-4 text-sm text-slate-500">
-          Manual checks | 5-second backend timeout | History resets on refresh
+          Manual checks | 5-second backend timeout | Last 20 checks saved
         </p>
       </div>
     </main>

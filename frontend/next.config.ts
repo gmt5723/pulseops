@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         destination: "http://127.0.0.1:4000/check",
       },
       {
+        source: "/api/checks",
+        destination: "http://127.0.0.1:4000/checks",
+      },
+      {
         source: "/api/monitors",
         destination: "http://127.0.0.1:4000/monitors",
       },
