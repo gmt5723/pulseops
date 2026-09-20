@@ -40,3 +40,5 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
+      - name: Build frontend
+        run: npm run build
