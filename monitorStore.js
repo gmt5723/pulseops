@@ -100,6 +100,7 @@ function createMonitor(input) {
     createdAt: new Date().toISOString(),
   };
 
+  // Save successfully before changing memory or reporting success.
   saveMonitors([...monitors.values(), monitor]);
   monitors.set(monitor.id, monitor);
 
@@ -112,7 +113,24 @@ function listMonitors() {
   }));
 }
 
+function deleteMonitor(id) {
+  if (!monitors.has(id)) {
+    return false;
+  }
+
+  const remaining = Array.from(monitors.values()).filter(
+    (monitor) => monitor.id !== id
+  );
+
+  // Save successfully before removing the monitor from memory.
+  saveMonitors(remaining);
+  monitors.delete(id);
+
+  return true;
+}
+
 module.exports = {
   createMonitor,
   listMonitors,
+  deleteMonitor,
 };

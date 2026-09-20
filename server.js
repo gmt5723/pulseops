@@ -3,7 +3,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const checkWebsite = require("./checkWebsite");
 const validateUrl = require("./validateUrl");
-const { createMonitor, listMonitors } = require("./monitorStore");
+const {
+  createMonitor,
+  listMonitors,
+  deleteMonitor,
+} = require("./monitorStore");
 
 const PORT = 4000;
 
@@ -111,6 +115,33 @@ const server = http.createServer(async (request, response) => {
         message: error.message,
       });
     }
+    return;
+  }
+
+  const monitorMatch = route.match(/^\/monitors\/([^/]+)$/);
+
+  if (request.method === "DELETE" && monitorMatch) {
+    const id = monitorMatch[1];
+
+    try {
+      const deleted = deleteMonitor(id);
+
+      if (!deleted) {
+        sendJson(response, 404, {
+          message: "Monitor not found.",
+        });
+        return;
+      }
+
+      sendJson(response, 200, { deleted: true, id });
+    } catch (error) {
+      console.error("Could not delete monitor:", error);
+
+      sendJson(response, 500, {
+        message: "Could not save the deletion. Please try again.",
+      });
+    }
+
     return;
   }
 
