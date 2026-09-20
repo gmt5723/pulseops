@@ -13,6 +13,18 @@ export default function Home() {
   const [error, setError] = useState("");
   const [history, setHistory] = useState<CheckHistoryItem[]>([]);
 
+  function recordCheck(completedCheck: CheckResult) {
+    const historyItem: CheckHistoryItem = {
+      ...completedCheck,
+      id: crypto.randomUUID(),
+      checkedAt: new Date().toISOString(),
+    };
+
+    setHistory((previous) =>
+      [historyItem, ...previous].slice(0, 20)
+    );
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -49,16 +61,7 @@ export default function Home() {
       const completedCheck: CheckResult = data;
 
       setResult(completedCheck);
-
-      const historyItem: CheckHistoryItem = {
-        ...completedCheck,
-        id: crypto.randomUUID(),
-        checkedAt: new Date().toISOString(),
-      };
-
-      setHistory((previous) =>
-        [historyItem, ...previous].slice(0, 20)
-      );
+      recordCheck(completedCheck);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Something went wrong."
@@ -109,7 +112,7 @@ export default function Home() {
               disabled={loading}
               className="mt-5 rounded-lg bg-lime-400 px-5 py-3 font-bold text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime-400 disabled:cursor-wait disabled:opacity-60"
             >
-              {loading ? "Checking…" : "Check website"}
+              {loading ? "Checking..." : "Check website"}
             </button>
           </form>
 
@@ -121,7 +124,7 @@ export default function Home() {
 
           <div role="status" aria-live="polite" className="mt-6">
             {loading && (
-              <p className="text-slate-400">Waiting for a response…</p>
+              <p className="text-slate-400">Waiting for a response...</p>
             )}
 
             {result && <ResultCard result={result} />}
@@ -132,12 +135,12 @@ export default function Home() {
           </div>
         </section>
 
-        <MonitorManager />
+        <MonitorManager onCheckComplete={recordCheck} />
 
-<CheckHistory checks={history} />
+        <CheckHistory checks={history} />
 
         <p className="mt-4 text-sm text-slate-500">
-          Manual checks · 5-second backend timeout · History resets on refresh
+          Manual checks | 5-second backend timeout | History resets on refresh
         </p>
       </div>
     </main>

@@ -31,8 +31,13 @@ async function readResponse(response: Response) {
   return data;
 }
 
-export default function MonitorManager() {
-  const [monitors, setMonitors] = useState<Monitor[]>([]);
+type MonitorManagerProps = {
+  onCheckComplete: (result: CheckResult) => void;
+};
+
+export default function MonitorManager({
+  onCheckComplete,
+}: MonitorManagerProps) {  const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("https://example.com");
   const [loading, setLoading] = useState(true);
@@ -138,6 +143,7 @@ export default function MonitorManager() {
           error: "",
         },
       }));
+      onCheckComplete(result);
     } catch (error) {
       setChecks((previous) => ({
         ...previous,
