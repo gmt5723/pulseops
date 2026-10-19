@@ -11,7 +11,8 @@ const {
   deleteMonitor,
 } = require("./monitorStore");
 
-const PORT = 4000;
+const PORT = Number(process.env.PORT || 4000);
+const HOST = process.env.HOST || "127.0.0.1";
 
 const homePage = fs.readFileSync(
   path.join(__dirname, "index.html"),
@@ -226,8 +227,8 @@ const server = http.createServer(async (request, response) => {
 });
 
 if (require.main === module) {
-  server.listen(PORT, "127.0.0.1", () => {
-    console.log(`PulseOps API running at http://localhost:${PORT}`);
+  server.listen(PORT, HOST, () => {
+    console.log(`PulseOps API running at http://${HOST}:${PORT}`);
   });
 }
 

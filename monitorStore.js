@@ -3,7 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const validateUrl = require("./validateUrl");
 
-const dataDirectory = path.join(__dirname, "data");
+const dataDirectory = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, "data");
 const storageFile = path.join(dataDirectory, "monitors.json");
 
 function validateName(name) {
