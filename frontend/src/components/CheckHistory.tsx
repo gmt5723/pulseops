@@ -19,7 +19,7 @@ export default function CheckHistory({ checks }: CheckHistoryProps) {
   const [filter, setFilter] = useState<HistoryFilter>("ALL");
 
   const visibleChecks = checks.filter(
-    (check) => filter === "ALL" || check.status === filter
+    (check) => filter === "ALL" || check.status === filter,
   );
 
   const counts = {
@@ -38,8 +38,8 @@ export default function CheckHistory({ checks }: CheckHistoryProps) {
       </h2>
 
       <p className="mt-2 text-sm text-slate-400">
-        Last 20 completed checks, newest first.
-        History remains after page refreshes and backend restarts.
+        Last 20 completed checks, newest first. History remains after page
+        refreshes and backend restarts.
       </p>
 
       <div
@@ -72,8 +72,7 @@ export default function CheckHistory({ checks }: CheckHistoryProps) {
         <p className="mt-5 text-slate-400">No completed checks yet.</p>
       ) : visibleChecks.length === 0 ? (
         <p className="mt-5 text-slate-400">
-          No {filter === "FAILED" ? "failed" : "online"} checks
-          in the saved history.
+          {`No ${filter === "FAILED" ? "failed" : "online"} checks in the saved history.`}
         </p>
       ) : (
         <ul className="mt-5 divide-y divide-slate-700">
@@ -109,7 +108,9 @@ export default function CheckHistory({ checks }: CheckHistoryProps) {
               </div>
 
               {check.error && (
-                <p className="text-sm text-red-300">{check.error}</p>
+                <p className="break-words text-sm text-red-300">
+                  {check.error}
+                </p>
               )}
             </li>
           ))}
