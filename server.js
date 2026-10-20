@@ -3,13 +3,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const checkWebsite = require("./checkWebsite");
 const validateUrl = require("./validateUrl");
-const { recordCheck, listChecks } = require("./checkHistoryStore");
-const {
-  createMonitor,
-  listMonitors,
-  renameMonitor,
-  deleteMonitor,
-} = require("./monitorStore");
+const cloudStorage = Boolean(process.env.SUPABASE_URL || process.env.SUPABASE_SECRET_KEY);
+const store = cloudStorage
+  ? require("./supabaseStore").createSupabaseStore({
+      url: process.env.SUPABASE_URL,
+      key: process.env.SUPABASE_SECRET_KEY,
+    })
+  : { ...require("./monitorStore"), ...require("./checkHistoryStore") };
+const { recordCheck, listChecks, createMonitor, listMonitors, renameMonitor, deleteMonitor } = store;
 
 const PORT = Number(process.env.PORT || 4000);
 const HOST = process.env.HOST || "127.0.0.1";
@@ -66,7 +67,7 @@ function readJsonBody(request) {
   });
 }
 
-const server = http.createServer(async (request, response) => {
+async function handleRequest(request, response) {
   let requestUrl;
 
   try {
@@ -94,11 +95,11 @@ const server = http.createServer(async (request, response) => {
     return;
   }
    if (request.method === "GET" && route === "/checks") {
-    sendJson(response, 200, { checks: listChecks() });
+    sendJson(response, 200, { checks: await listChecks() });
     return;
   }
   if (request.method === "GET" && route === "/monitors") {
-    sendJson(response, 200, { monitors: listMonitors() });
+    sendJson(response, 200, { monitors: await listMonitors() });
     return;
   }
 
@@ -117,7 +118,7 @@ const server = http.createServer(async (request, response) => {
 
     try {
       const input = await readJsonBody(request);
-      const monitor = createMonitor(input);
+      const monitor = await createMonitor(input);
 
       sendJson(response, 201, { monitor });
     } catch (error) {
@@ -145,7 +146,7 @@ const server = http.createServer(async (request, response) => {
 
     try {
       const input = await readJsonBody(request);
-      const monitor = renameMonitor(monitorMatch[1], input);
+      const monitor = await renameMonitor(monitorMatch[1], input);
 
       if (!monitor) {
         sendJson(response, 404, {
@@ -176,7 +177,7 @@ const server = http.createServer(async (request, response) => {
     const id = monitorMatch[1];
 
     try {
-      const deleted = deleteMonitor(id);
+      const deleted = await deleteMonitor(id);
 
       if (!deleted) {
         sendJson(response, 404, {
@@ -212,7 +213,7 @@ const server = http.createServer(async (request, response) => {
 
     try {
            const result = await checkWebsite(validatedUrl);
-      const savedCheck = recordCheck(result);
+      const savedCheck = await recordCheck(result);
       sendJson(response, 200, savedCheck);
     } catch (error) {
       console.error("Unexpected check error:", error);
@@ -224,6 +225,13 @@ const server = http.createServer(async (request, response) => {
   }
 
   sendJson(response, 404, { message: "Route not found" });
+}
+
+const server = http.createServer((request, response) => {
+  handleRequest(request, response).catch(() => {
+    if (!response.headersSent) sendJson(response, 503, { message: "Storage unavailable. Please retry shortly." });
+    else response.end();
+  });
 });
 
 if (require.main === module) {
