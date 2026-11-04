@@ -3,7 +3,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const validateUrl = require("./validateUrl");
 
-const storageFile = path.join(__dirname, "data", "check-history.json");
+const dataDirectory = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, "data");
+
+const storageFile = path.join(dataDirectory, "check-history.json");
 const HISTORY_LIMIT = 20;
 
 function validateResult(result) {

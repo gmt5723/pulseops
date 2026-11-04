@@ -1,23 +1,27 @@
 import type { NextConfig } from "next";
 
+const apiBaseUrl = (
+  process.env.API_BASE_URL || "http://127.0.0.1:4000"
+).replace(/\/+$/, "");
+
 const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
         source: "/api/check",
-        destination: "http://127.0.0.1:4000/check",
+        destination: `${apiBaseUrl}/check`,
       },
       {
         source: "/api/checks",
-        destination: "http://127.0.0.1:4000/checks",
+        destination: `${apiBaseUrl}/checks`,
       },
       {
         source: "/api/monitors",
-        destination: "http://127.0.0.1:4000/monitors",
+        destination: `${apiBaseUrl}/monitors`,
       },
       {
         source: "/api/monitors/:id",
-        destination: "http://127.0.0.1:4000/monitors/:id",
+        destination: `${apiBaseUrl}/monitors/:id`,
       },
     ];
   },
